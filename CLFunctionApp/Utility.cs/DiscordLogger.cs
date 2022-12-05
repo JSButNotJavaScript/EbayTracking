@@ -50,9 +50,24 @@ namespace FunctionApp1.Utility.cs
             return JsonConvert.SerializeObject(data);
         }
 
+        public record Message
+        {
+            public string Header { get; set; }
+            public string Description { get; set; }
+            public string Title { get; set; }
+        }
+
         public async Task<bool> LogMesage(string message)
         {
             var formattedMessage = FormatMessageInBody(message, message, message);
+            var content = new StringContent(formattedMessage, Encoding.UTF8, "application/json");
+            var response = await _httpClient.PostAsync(_webhookUrl, content);
+            return response.IsSuccessStatusCode;
+        }
+
+        public async Task<bool> LogMesage(Message message)
+        {
+            var formattedMessage = FormatMessageInBody(message.Title, message.Header, message.Description);
             var content = new StringContent(formattedMessage, Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync(_webhookUrl, content);
             return response.IsSuccessStatusCode;
