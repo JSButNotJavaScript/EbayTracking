@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
 
 namespace FunctionApp1.Utility.cs
 {
@@ -46,7 +47,7 @@ namespace FunctionApp1.Utility.cs
                 embeds = new DiscordEmbed[] { embed },
                 username = _userName
             };
-            return JsonSerializer.Serialize(data);
+            return JsonConvert.SerializeObject(data);
         }
 
         public async Task<bool> LogMesage(string message)
