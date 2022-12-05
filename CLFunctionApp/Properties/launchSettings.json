@@ -1,0 +1,9 @@
+{
+  "profiles": {
+    "CLFunctionApp": {
+      "commandName": "Project",
+      "commandLineArgs": "--port 7169",
+      "launchBrowser": false
+    }
+  }
+}
