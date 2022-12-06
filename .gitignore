@@ -4,3 +4,8 @@
 *.publishproj
 *.arm.json
 *.suo
+*.vsidx
+.gitignore
+*.v5.2
+*.v2
+*Zip Deploy.json
