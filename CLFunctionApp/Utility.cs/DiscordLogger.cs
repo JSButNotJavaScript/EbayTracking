@@ -50,13 +50,6 @@ namespace FunctionApp1.Utility.cs
             return JsonConvert.SerializeObject(data);
         }
 
-        public record Message
-        {
-            public string Header { get; set; }
-            public string Description { get; set; }
-            public string Title { get; set; }
-        }
-
         public async Task<bool> LogMesage(string message)
         {
             var formattedMessage = FormatMessageInBody(message, message, message);
@@ -65,7 +58,7 @@ namespace FunctionApp1.Utility.cs
             return response.IsSuccessStatusCode;
         }
 
-        public async Task<bool> LogMesage(Message message)
+        public async Task<bool> LogMesage(DiscordMessage message)
         {
             var formattedMessage = FormatMessageInBody(message.Title, message.Header, message.Description);
             var content = new StringContent(formattedMessage, Encoding.UTF8, "application/json");
@@ -73,7 +66,7 @@ namespace FunctionApp1.Utility.cs
             return response.IsSuccessStatusCode;
         }
 
-        private class DiscordEmbed
+        private record DiscordEmbed
         {
             public Author author;
 
@@ -89,5 +82,11 @@ namespace FunctionApp1.Utility.cs
             public string name;
         }
 
+    }
+    public record DiscordMessage
+    {
+        public string Header { get; set; }
+        public string Description { get; set; }
+        public string Title { get; set; }
     }
 }

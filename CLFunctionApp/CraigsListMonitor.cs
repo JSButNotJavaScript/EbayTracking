@@ -17,7 +17,7 @@ namespace CLFunctionApp
         private static readonly string CraigslistURL = "https://vancouver.craigslist.org/search/sss?query=fender+stratocaster&excats=92-40-19-22-15-1&sort=dateoldest&min_price=500&max_price=2000";
 
 
-        // 0 * * * * *	every minute	09:00:00; 09:01:00; 09:02:00; … 10:00:00
+        // 0 * * * * *	every minute	09:00:00; 09:01:00; 09:02:00; ï¿½ 10:00:00
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
         // 0 0 * * * *	every hour(hourly) 09:00:00; 10:00:00; 11:00:00
         [Function("Function1")]
@@ -30,7 +30,11 @@ namespace CLFunctionApp
             var logger = new DiscordLogger(DiscordWebhookUrl, httpClient);
             var craigsListScraper = new CraigslistScraper(CraigslistURL);
             var results = await craigsListScraper.ScrapeAsync();
-            await logger.LogMesage($"{results.Count} results found");
+
+            var lastTenLinks = results.Select(r => r.Url).Skip(results.Count - 10);
+            var newlineSeparatedLinks = string.Join(" \n", lastTenLinks);
+
+            await logger.LogMesage(new DiscordMessage() { Description = newlineSeparatedLinks, Header = $"Fender Search Total Results: {results.Count}", Title = "Last 10 resultsh" });
         }
     }
 
