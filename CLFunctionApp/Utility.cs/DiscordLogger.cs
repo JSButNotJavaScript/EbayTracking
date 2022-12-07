@@ -27,14 +27,44 @@ namespace FunctionApp1.Utility.cs
         {
             var embed = new DiscordEmbed()
             {
-                author = new Author()
+                Author = new Author()
                 {
-                    name = header//"Authors gonna author"
+                    Name = header//"Authors gonna author"
                 },
-                title = title, //"Testing title",
-                description = description, //yo peep dis shit dawg
-                color = 0
+                Title = title, //"Testing title",
+                Description = description, //yo peep dis shit dawg
+                Color = 0
 
+            };
+
+            var data = new
+            {
+
+                //username = this._userName,
+                //content = message, //required
+                //avatar_url = "",
+
+                embeds = new DiscordEmbed[] { embed },
+                username = _userName
+            };
+            return JsonConvert.SerializeObject(data);
+        }
+
+        private string FormatMessageInBody(string title, string header, string description, string imageURL)
+        {
+            var embed = new DiscordEmbed()
+            {
+                Author = new Author()
+                {
+                    Name = header//"Authors gonna author"
+                },
+                Title = title, //"Testing title",
+                Description = description, //yo peep dis shit dawg
+                Color = 0,
+                Image = new Image()
+                {
+                    Url = imageURL,
+                },
             };
 
             var data = new
@@ -60,7 +90,7 @@ namespace FunctionApp1.Utility.cs
 
         public async Task<bool> LogMesage(DiscordMessage message)
         {
-            var formattedMessage = FormatMessageInBody(message.Title, message.Header, message.Description);
+            var formattedMessage = message.ImageUrl is not null ? FormatMessageInBody(message.Title, message.Header, message.Description, message.ImageUrl) : FormatMessageInBody(message.Title, message.Header, message.Description);
             var content = new StringContent(formattedMessage, Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync(_webhookUrl, content);
             return response.IsSuccessStatusCode;
@@ -68,18 +98,23 @@ namespace FunctionApp1.Utility.cs
 
         private record DiscordEmbed
         {
-            public Author author;
+            public Author Author;
 
-            public string title;
+            public string Title;
 
-            public string description;
+            public string Description;
 
-            public int color;
+            public int Color;
+            public Image? Image;
         }
 
-        class Author
+        record Author
         {
-            public string name;
+            public string Name;
+        }
+        record Image
+        {
+            public string Url;
         }
 
     }
@@ -88,5 +123,6 @@ namespace FunctionApp1.Utility.cs
         public string Header { get; set; }
         public string Description { get; set; }
         public string Title { get; set; }
+        public string? ImageUrl { get; set; }
     }
 }
