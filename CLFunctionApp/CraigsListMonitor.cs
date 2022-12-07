@@ -61,16 +61,18 @@ namespace CLFunctionApp
             return client;
         }
 
-        private bool UploadProductsToBlob(IList<CraigsListProduct> products)
+        private async Task<bool> UploadProductsToBlob(IList<CraigsListProduct> products)
         {
             var productDictionary = products.ToDictionary(p => p.Url, p => p);
             var serializedDictionary = JsonSerializer.Serialize(productDictionary);
 
-            var blobCLient = GetCloudStorageAccount();
+            var blobContainerClient = GetCloudStorageAccount();
+
+            var blobClient = blobContainerClient.GetBlobClient("ListingDictionary");
 
             var content = Encoding.UTF8.GetBytes(serializedDictionary);
             using (var ms = new MemoryStream(content))
-                blobCLient.UploadBlob("ListingDictionary", ms);
+                await blobClient.UploadAsync(ms, true);
 
             return true;
         }
