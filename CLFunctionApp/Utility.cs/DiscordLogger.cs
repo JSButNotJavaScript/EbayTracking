@@ -4,7 +4,9 @@ using System.Net.Http;
 using System.Text;
 using System.Text.Json;
 using System.Threading.Tasks;
+using System.Text.Json;
 using Newtonsoft.Json;
+using Newtonsoft.Json.Serialization;
 
 namespace FunctionApp1.Utility.cs
 {
@@ -23,6 +25,12 @@ namespace FunctionApp1.Utility.cs
             _httpClient = httpClient ?? new HttpClient();
         }
 
+        public record DiscordMessagePayload
+        {
+            public DiscordEmbed[] embeds { get; set; }
+            public string username { get; set; }
+        }
+
         private string FormatMessageInBody(string title, string header, string description)
         {
             var embed = new DiscordEmbed()
@@ -37,7 +45,7 @@ namespace FunctionApp1.Utility.cs
 
             };
 
-            var data = new
+            var data = new DiscordMessagePayload
             {
 
                 //username = this._userName,
@@ -47,6 +55,7 @@ namespace FunctionApp1.Utility.cs
                 embeds = new DiscordEmbed[] { embed },
                 username = _userName
             };
+
             return JsonConvert.SerializeObject(data);
         }
 
@@ -90,29 +99,38 @@ namespace FunctionApp1.Utility.cs
 
         public async Task<bool> LogMesage(DiscordMessage message)
         {
-            var formattedMessage = message.ImageUrl is not null ? FormatMessageInBody(message.Title, message.Header, message.Description, message.ImageUrl) : FormatMessageInBody(message.Title, message.Header, message.Description);
+            var formattedMessage = message.ImageUrl is null ? FormatMessageInBody(message.Title, message.Header, message.Description)
+                : FormatMessageInBody(message.Title, message.Header, message.Description, message.ImageUrl);
+
             var content = new StringContent(formattedMessage, Encoding.UTF8, "application/json");
             var response = await _httpClient.PostAsync(_webhookUrl, content);
             return response.IsSuccessStatusCode;
         }
 
-        private record DiscordEmbed
+        public record DiscordEmbed
         {
+            [JsonProperty("author")]
             public Author Author;
 
+            [JsonProperty("title")]
             public string Title;
 
+            [JsonProperty("description")]
             public string Description;
 
+            [JsonProperty("color")]
             public int Color;
+
+            [JsonProperty("Image")]
             public Image? Image;
         }
 
-        record Author
+        public record Author
         {
+            [JsonProperty("name")]
             public string Name;
         }
-        record Image
+        public record Image
         {
             public string Url;
         }
