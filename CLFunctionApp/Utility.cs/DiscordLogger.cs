@@ -1,9 +1,4 @@
-﻿using System.Collections.Generic;
-using System.Linq;
-using System.Net.Http;
-using System.Text;
-using System.Text.Json;
-using System.Threading.Tasks;
+﻿using System.Text;
 using System.Text.Json;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Serialization;
@@ -12,15 +7,12 @@ namespace FunctionApp1.Utility.cs
 {
     public class DiscordLogger
     {
-        private string _webhookUrl;
-
         private HttpClient _httpClient;
 
         private string _userName;
 
-        public DiscordLogger(string webhookUrl, HttpClient? httpClient, string userName = "webhook")
+        public DiscordLogger( HttpClient? httpClient, string userName = "webhook")
         {
-            _webhookUrl = webhookUrl;
             _userName = userName;
             _httpClient = httpClient ?? new HttpClient();
         }
@@ -89,21 +81,21 @@ namespace FunctionApp1.Utility.cs
             return JsonConvert.SerializeObject(data);
         }
 
-        public async Task<bool> LogMesage(string message)
+        public async Task<bool> LogMesage(string webhookUrl, string message)
         {
             var formattedMessage = FormatMessageInBody(message, message, message);
             var content = new StringContent(formattedMessage, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync(_webhookUrl, content);
+            var response = await _httpClient.PostAsync(webhookUrl, content);
             return response.IsSuccessStatusCode;
         }
 
-        public async Task<bool> LogMesage(DiscordMessage message)
+        public async Task<bool> LogMesage(string webhookUrl, DiscordMessage message)
         {
             var formattedMessage = message.ImageUrl is null ? FormatMessageInBody(message.Title, message.Header, message.Description)
                 : FormatMessageInBody(message.Title, message.Header, message.Description, message.ImageUrl);
 
             var content = new StringContent(formattedMessage, Encoding.UTF8, "application/json");
-            var response = await _httpClient.PostAsync(_webhookUrl, content);
+            var response = await _httpClient.PostAsync(webhookUrl, content);
             return response.IsSuccessStatusCode;
         }
 

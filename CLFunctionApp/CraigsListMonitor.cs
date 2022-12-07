@@ -3,13 +3,8 @@ using FunctionApp1.Utility.cs;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
-using Microsoft.WindowsAzure.Storage;
-using Microsoft.WindowsAzure.Storage.Auth;
-using Microsoft.WindowsAzure.Storage.Blob;
-using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json;
-using System.Linq;
 
 namespace CLFunctionApp
 {
@@ -25,7 +20,10 @@ namespace CLFunctionApp
             _configuration = configuration;
         }
 
-        private static readonly string DiscordWebhookUrl = "https://discord.com/api/webhooks/1049207061147303986/k3IiOhELq61GWUUhWmTTFjSOxjsrrHiZKcMYO6KdfWSWsCe8q0PKkRawQlVePwhqT-8L";
+        private static readonly string UPDATED_LISTINGS_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1049207061147303986/k3IiOhELq61GWUUhWmTTFjSOxjsrrHiZKcMYO6KdfWSWsCe8q0PKkRawQlVePwhqT-8L";
+
+        private static readonly string MONITOR_HEALTH_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/894835740716986368/xxy0-tlvZafJdgcR-oBkcGHqPwl_-nXaO4NakSM3q4Z0KGZO2XURY0RJVQql774MV7xV";
+
         private static readonly string CraigslistURL = "https://vancouver.craigslist.org/search/sss?query=fender+stratocaster&excats=92-40-19-22-15-1&sort=dateoldest&min_price=500&max_price=2000";
 
 
@@ -42,7 +40,7 @@ namespace CLFunctionApp
             _logger.LogInformation($"Next timer schedule at: {myTimer.ScheduleStatus.Next}");
 
             var httpClient = new HttpClient();
-            var discordLogger = new DiscordLogger(DiscordWebhookUrl, httpClient);
+            var discordLogger = new DiscordLogger(httpClient);
             var craigsListScraper = new CraigslistScraper(CraigslistURL);
             var currentListings = await craigsListScraper.ScrapeListings();
 
@@ -78,11 +76,11 @@ namespace CLFunctionApp
 
                 title += $"Fender Search Total Results: {currentListings.Count}";
 
-                await discordLogger.LogMesage(new DiscordMessage() { Description = description, Header = $"Listings Changed", Title = title });
+                await discordLogger.LogMesage(UPDATED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Header = $"Listings Changed", Title = title });
             }
             else
             {
-                await discordLogger.LogMesage(new DiscordMessage() { Header = "Azure Function still running. ", Title = $"Previous listing had {previousListings.Count} results" });
+                await discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "Azure Function still running. ", Title = $"Previous listing had {previousListings.Count} results" });
             }
 
             await UploadProductsToBlob(currentListings, blobClient);
