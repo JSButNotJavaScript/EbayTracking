@@ -9,6 +9,7 @@ using Microsoft.WindowsAzure.Storage.Blob;
 using System.Reflection.Metadata;
 using System.Text;
 using System.Text.Json;
+using System.Linq;
 
 namespace CLFunctionApp
 {
@@ -41,17 +42,50 @@ namespace CLFunctionApp
             _logger.LogInformation($"Next timer schedule at: {myTimer.ScheduleStatus.Next}");
 
             var httpClient = new HttpClient();
-            var logger = new DiscordLogger(DiscordWebhookUrl, httpClient);
+            var discordLogger = new DiscordLogger(DiscordWebhookUrl, httpClient);
             var craigsListScraper = new CraigslistScraper(CraigslistURL);
-            var products = await craigsListScraper.ScrapeAsync();
+            var currentListings = await craigsListScraper.ScrapeListings();
 
 
-            var lastTenLinks = products.Select(r => r.Url).Skip(products.Count - 10);
-            var newlineSeparatedLinks = string.Join(" \n", lastTenLinks);
+            //var lastTenLinks = currentListings.Select(r => r.Url).Skip(currentListings.Count - 10);
+            //var newlineSeparatedLinks = string.Join(" \n", lastTenLinks);
 
-            UploadProductsToBlob(products);
+            var blobClient = GetListingsBlobClient();
 
-            await logger.LogMesage(new DiscordMessage() { Description = newlineSeparatedLinks, Header = $"Fender Search Total Results: {products.Count}", Title = "Last 10 resultsh" });
+            var previousListings = await GetPreviousListings(blobClient);
+
+            var (newlyPostedListings, soldListings) = await ComparePreviousAndCurrentListings(currentListings, previousListings);
+
+            if (newlyPostedListings.Count > 0 || soldListings.Count > 0)
+            {
+                var description = "";
+
+                var anyNewPosts = newlyPostedListings.Count > 0;
+                var anySoldPosts = soldListings.Count > 0;
+                var title = "";
+
+                if (anyNewPosts)
+                {
+                    description += "<b>NEW LISTING: </b> \n" + string.Join(" \n", newlyPostedListings.Select(l => l.Url));
+                    title += $"{newlyPostedListings.Count} NEW POSTS";
+                }
+
+                if (anySoldPosts)
+                {
+                    description += "<b>SOLD LISTING: </b> \n" + string.Join(" \n", soldListings.Select(l => l.Url));
+                    title += $"{soldListings.Count} SOLD POSTS";
+                }
+
+                title += $"Fender Search Total Results: {currentListings.Count}";
+
+                await discordLogger.LogMesage(new DiscordMessage() { Description = description, Header = $"Listings Changed", Title = title });
+            }
+            else
+            {
+                await discordLogger.LogMesage(new DiscordMessage() { Header = "Azure Function still running. ", Title = $"Previous listing had {previousListings.Count} results" });
+            }
+
+            await UploadProductsToBlob(currentListings, blobClient);
         }
 
         private BlobContainerClient GetCloudStorageAccount()
@@ -61,14 +95,47 @@ namespace CLFunctionApp
             return client;
         }
 
-        private async Task<bool> UploadProductsToBlob(IList<CraigsListProduct> products)
+        private async Task<Dictionary<string, CraigsListProduct>> GetPreviousListings(BlobClient blobClient)
         {
-            var productDictionary = products.ToDictionary(p => p.Url, p => p);
-            var serializedDictionary = JsonSerializer.Serialize(productDictionary);
+            byte[] oldListingBytes;
 
+            using (MemoryStream ms = new MemoryStream())
+            using (var oldListingStream = await blobClient.OpenReadAsync())
+            {
+                oldListingStream.CopyTo(ms);
+                oldListingBytes = ms.ToArray();
+            }
+
+            var oldListingString = Encoding.UTF8.GetString(oldListingBytes);
+
+            var dictionary = JsonSerializer.Deserialize<Dictionary<string, CraigsListProduct>>(oldListingString);
+
+            return dictionary;
+        }
+
+        private BlobClient GetListingsBlobClient()
+        {
             var blobContainerClient = GetCloudStorageAccount();
 
             var blobClient = blobContainerClient.GetBlobClient("ListingDictionary");
+
+            return blobClient;
+        }
+
+
+        private async Task<(IList<CraigsListProduct> newlyPostedListings, IList<CraigsListProduct> SoldListings)> ComparePreviousAndCurrentListings(IDictionary<string, CraigsListProduct> currentListings, IDictionary<string, CraigsListProduct> previousListings)
+        {
+
+            var newlyPostedListings = currentListings.Values.Where(l => !previousListings.ContainsKey(l.Url)).ToList();
+            var soldListings = previousListings.Values.Where(l => !currentListings.ContainsKey(l.Url)).ToList();
+
+            return (newlyPostedListings, soldListings);
+        }
+
+        private async Task<bool> UploadProductsToBlob(IDictionary<string, CraigsListProduct> products, BlobClient blobClient)
+        {
+            var serializedDictionary = JsonSerializer.Serialize(products);
+
 
             var content = Encoding.UTF8.GetBytes(serializedDictionary);
             using (var ms = new MemoryStream(content))

@@ -17,7 +17,7 @@ namespace FunctionApp1.Utility.cs
             _url = url;
         }
 
-        public async Task<IList<CraigsListProduct>> ScrapeAsync()
+        public async Task<IDictionary<string, CraigsListProduct>> ScrapeListings()
         {
             var config = Configuration.Default.WithDefaultLoader();
             var context = BrowsingContext.New(config);
@@ -34,7 +34,7 @@ namespace FunctionApp1.Utility.cs
                 return new CraigsListProduct() { Price = price, Url = link };
             });
 
-            return products.ToList();
+            return products.ToDictionary(p => p.Url, p => p);
         }
     }
 }
