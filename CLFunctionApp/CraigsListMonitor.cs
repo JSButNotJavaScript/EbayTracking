@@ -33,7 +33,7 @@ namespace CLFunctionApp
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
         // 0 0 * * * *	every hour(hourly) 09:00:00; 10:00:00; 11:00:00
         [Function("Function1")]
-        public async Task Run([TimerTrigger("0 */5 * * * *")] MyInfo myTimer
+        public async Task Run([TimerTrigger("0 */3 * * * *")] MyInfo myTimer
 
             )
         {
@@ -57,13 +57,14 @@ namespace CLFunctionApp
 
             if (anyNewPosts || anySoldPosts)
             {
+                var postDiscordMessageSucceeded = true;
                 if (anyNewPosts)
                 {
                     var description = "**NEW/UPDATED LISTINGS:**  \n" + string.Join(" \n", newlyPostedListings.Select(l => $"{l.Url}  {(l.Price)}"));
                     var header = $"{newlyPostedListings.Count} NEW POSTS ";
                     var title = $"Fender Search Total Results: {currentListings.Count}";
 
-                    await discordLogger.LogMesage(UPDATED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
+                    postDiscordMessageSucceeded = await discordLogger.LogMesage(UPDATED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
                 }
 
                 if (anySoldPosts)
@@ -72,8 +73,13 @@ namespace CLFunctionApp
                     var header = $"{soldListings.Count} SOLD POSTS ";
                     var title = $"Fender Search Total Results: {currentListings.Count}";
 
-                    await discordLogger.LogMesage(SOLD_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
+                    postDiscordMessageSucceeded = await discordLogger.LogMesage(SOLD_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
 
+                }
+
+                if (!postDiscordMessageSucceeded)
+                {
+                    await discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "FAILED TO POST UPDATE. ", Title = $"Previous listing had {previousListings.Count} results" });
                 }
 
             }
