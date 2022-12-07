@@ -24,8 +24,9 @@ namespace CLFunctionApp
 
         private static readonly string MONITOR_HEALTH_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/894835740716986368/xxy0-tlvZafJdgcR-oBkcGHqPwl_-nXaO4NakSM3q4Z0KGZO2XURY0RJVQql774MV7xV";
 
-        private static readonly string CraigslistURL = "https://vancouver.craigslist.org/search/sss?query=fender+stratocaster&excats=92-40-19-22-15-1&sort=dateoldest&min_price=500&max_price=2000";
+        private static readonly string SOLD_LISTINGS_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1050129633292595290/Nnl5-vFXooxpiuT4nEqvN-4SWejPtTL9LfX1ddgIYDSlLsMwBiDXKsikqcIH6opxg1p9";
 
+        private static readonly string CRAIGSLIST_SEARCH_URL = "https://vancouver.craigslist.org/search/sss?query=fender+stratocaster&excats=92-40-19-22-15-1&sort=dateoldest&min_price=500&max_price=2000";
 
 
         // 0 * * * * *	every minute	09:00:00; 09:01:00; 09:02:00; � 10:00:00
@@ -41,12 +42,9 @@ namespace CLFunctionApp
 
             var httpClient = new HttpClient();
             var discordLogger = new DiscordLogger(httpClient);
-            var craigsListScraper = new CraigslistScraper(CraigslistURL);
-            var currentListings = await craigsListScraper.ScrapeListings();
 
-
-            //var lastTenLinks = currentListings.Select(r => r.Url).Skip(currentListings.Count - 10);
-            //var newlineSeparatedLinks = string.Join(" \n", lastTenLinks);
+            var craigsListScraper = new CraigslistScraper();
+            var currentListings = await craigsListScraper.ScrapeListings(CRAIGSLIST_SEARCH_URL);
 
             var blobClient = GetListingsBlobClient();
 
@@ -54,29 +52,30 @@ namespace CLFunctionApp
 
             var (newlyPostedListings, soldListings) = await ComparePreviousAndCurrentListings(currentListings, previousListings);
 
-            if (newlyPostedListings.Count > 0 || soldListings.Count > 0)
+            var anyNewPosts = newlyPostedListings.Count > 0;
+            var anySoldPosts = soldListings.Count > 0;
+
+            if (anyNewPosts || anySoldPosts)
             {
-                var description = "";
-
-                var anyNewPosts = newlyPostedListings.Count > 0;
-                var anySoldPosts = soldListings.Count > 0;
-                var title = "";
-
                 if (anyNewPosts)
                 {
-                    description += "<b>NEW LISTING: </b> \n" + string.Join(" \n", newlyPostedListings.Select(l => l.Url));
-                    title += $"{newlyPostedListings.Count} NEW POSTS";
+                    var description = "**NEW/UPDATED LISTINGS:**  \n" + string.Join(" \n", newlyPostedListings.Select(l => $"{l.Url}  {(l.Price)}"));
+                    var header = $"{newlyPostedListings.Count} NEW POSTS ";
+                    var title = $"Fender Search Total Results: {currentListings.Count}";
+
+                    await discordLogger.LogMesage(UPDATED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
                 }
 
                 if (anySoldPosts)
                 {
-                    description += "<b>SOLD LISTING: </b> \n" + string.Join(" \n", soldListings.Select(l => l.Url));
-                    title += $"{soldListings.Count} SOLD POSTS";
+                    var description = "**SOLD LISTINGS: ** \n" + string.Join(" \n", soldListings.Select(l => $"{l.Url}  {(l.Price)}"));
+                    var header = $"{soldListings.Count} SOLD POSTS ";
+                    var title = $"Fender Search Total Results: {currentListings.Count}";
+
+                    await discordLogger.LogMesage(SOLD_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
+
                 }
 
-                title += $"Fender Search Total Results: {currentListings.Count}";
-
-                await discordLogger.LogMesage(UPDATED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Header = $"Listings Changed", Title = title });
             }
             else
             {

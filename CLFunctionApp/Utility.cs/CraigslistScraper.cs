@@ -10,19 +10,12 @@ namespace FunctionApp1.Utility.cs
 {
     public class CraigslistScraper
     {
-        private string _url;
-
-        public CraigslistScraper(string url)
-        {
-            _url = url;
-        }
-
-        public async Task<IDictionary<string, CraigsListProduct>> ScrapeListings()
+        public async Task<IDictionary<string, CraigsListProduct>> ScrapeListings(string url)
         {
             var config = Configuration.Default.WithDefaultLoader();
             var context = BrowsingContext.New(config);
 
-            var document = await context.OpenAsync(_url);
+            var document = await context.OpenAsync(url);
             var cellSelector = ".result-row";
             var htmlElements = document.QuerySelectorAll(cellSelector);
 
