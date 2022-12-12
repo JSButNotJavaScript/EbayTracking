@@ -1,6 +1,7 @@
 using Azure.Storage.Blobs;
 using FunctionApp1.Utility.cs;
 using Microsoft.Azure.Functions.Worker;
+using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text;
@@ -28,6 +29,9 @@ namespace CLFunctionApp
 
         private static readonly string CRAIGSLIST_SEARCH_URL = "https://vancouver.craigslist.org/search/sss?query=fender+stratocaster&excats=92-40-19-22-15-1&sort=dateoldest&min_price=500&max_price=2000";
 
+        private static readonly string BLOB_CONTAINER_NAME = "listings";
+
+        private static readonly string LISTINGS_BLOB_NAME = "ListingDictionary";
 
         // 0 * * * * *	every minute	09:00:00; 09:01:00; 09:02:00; � 10:00:00
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
@@ -91,10 +95,20 @@ namespace CLFunctionApp
             await UploadProductsToBlob(currentListings, blobClient);
         }
 
+        [FunctionName("BlobTriggerCSharp")]
+        public static async Task Run([BlobTrigger("listings/{name}")] Stream myBlob, string name, ILogger log)
+        {
+            log.LogInformation($"C# Blob trigger function Processed blob\n Name:{name} \n Size: {myBlob.Length} Bytes");
+            var httpClient = new HttpClient();
+            var discordLogger = new DiscordLogger(httpClient);
+
+            await discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "Blob trigger function Processed. ", Title = $"{name} blob was just processed" });
+        }
+
         private BlobContainerClient GetCloudStorageAccount()
         {
             var connString = _configuration.GetValue<string>("AzureWebJobsStorage");
-            var client = new BlobContainerClient(connString, "listings");
+            var client = new BlobContainerClient(connString, BLOB_CONTAINER_NAME);
             return client;
         }
 
@@ -120,7 +134,7 @@ namespace CLFunctionApp
         {
             var blobContainerClient = GetCloudStorageAccount();
 
-            var blobClient = blobContainerClient.GetBlobClient("ListingDictionary");
+            var blobClient = blobContainerClient.GetBlobClient(LISTINGS_BLOB_NAME);
 
             return blobClient;
         }
