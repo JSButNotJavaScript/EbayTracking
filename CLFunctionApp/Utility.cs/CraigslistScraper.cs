@@ -10,12 +10,16 @@ namespace FunctionApp1.Utility.cs
 {
     public class CraigslistScraper
     {
-        public async Task<IDictionary<string, CraigsListProduct>> ScrapeListings(string url)
+        private IConfiguration _config { get; set; }
+        private IBrowsingContext _context { get; set; }
+        public CraigslistScraper()
         {
-            var config = Configuration.Default.WithDefaultLoader();
-            var context = BrowsingContext.New(config);
-
-            var document = await context.OpenAsync(url);
+            _config = Configuration.Default.WithDefaultLoader();
+            _context = BrowsingContext.New(_config);
+        }
+        public async Task<IDictionary<string, CraigsListProduct>> ScrapeListings(string craigslistSearchURL)
+        {
+            var document = await _context.OpenAsync(craigslistSearchURL);
             var cellSelector = ".result-row";
             var htmlElements = document.QuerySelectorAll(cellSelector);
 
@@ -28,6 +32,15 @@ namespace FunctionApp1.Utility.cs
             });
 
             return products.ToDictionary(p => p.Url, p => p);
+        }
+
+        public async Task<string?> ScrapeImageUrlFromListing(string listingUrl)
+        {
+            var document = await _context.OpenAsync(listingUrl);
+            var cellSelector = ("meta[name='description']");
+            var htmlElement = document.QuerySelector(cellSelector);
+            var imageUrl = htmlElement?.GetAttribute("content");
+            return imageUrl;
         }
     }
 }
