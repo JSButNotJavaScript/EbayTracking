@@ -95,16 +95,6 @@ namespace CLFunctionApp
             await UploadProductsToBlob(currentListings, blobClient);
         }
 
-        [FunctionName("BlobTriggerCSharp")]
-        public static async Task Run([BlobTrigger("listings/{name}")] Stream myBlob, string name, ILogger log)
-        {
-            log.LogInformation($"C# Blob trigger function Processed blob\n Name:{name} \n Size: {myBlob.Length} Bytes");
-            var httpClient = new HttpClient();
-            var discordLogger = new DiscordLogger(httpClient);
-
-            await discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "Blob trigger function Processed. ", Title = $"{name} blob was just processed" });
-        }
-
         private BlobContainerClient GetCloudStorageAccount()
         {
             var connString = _configuration.GetValue<string>("AzureWebJobsStorage");

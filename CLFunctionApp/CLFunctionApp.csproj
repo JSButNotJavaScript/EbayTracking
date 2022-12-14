@@ -9,6 +9,7 @@
   <ItemGroup>
     <PackageReference Include="AngleSharp.Css" Version="0.17.0-alpha-80" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker" Version="1.6.0" />
+    <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Storage" Version="4.0.4" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Extensions.Timer" Version="4.0.1" />
     <PackageReference Include="Microsoft.Azure.Functions.Worker.Sdk" Version="1.7.0-preview2" />
     <PackageReference Include="Microsoft.Azure.WebJobs.Extensions.Storage" Version="5.0.1" />
