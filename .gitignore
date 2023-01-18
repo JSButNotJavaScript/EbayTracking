@@ -11,3 +11,5 @@
 *Zip Deploy.json
 .vs/CLFunctionApp/DesignTimeBuild/.dtbcache.v2
 .vs/CLFunctionApp/config/applicationhost.config
+*.json
+*.http
