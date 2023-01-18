@@ -13,3 +13,4 @@
 .vs/CLFunctionApp/config/applicationhost.config
 *.json
 *.http
+*.vs
