@@ -11,7 +11,7 @@ namespace FunctionApp1.Utility.cs
 
         private string _userName;
 
-        public DiscordLogger( HttpClient? httpClient, string userName = "webhook")
+        public DiscordLogger(HttpClient? httpClient, string userName = "webhook")
         {
             _userName = userName;
             _httpClient = httpClient ?? new HttpClient();
@@ -29,21 +29,15 @@ namespace FunctionApp1.Utility.cs
             {
                 Author = new Author()
                 {
-                    Name = header//"Authors gonna author"
+                    Name = header,
                 },
-                Title = title, //"Testing title",
-                Description = description, //yo peep dis shit dawg
+                Title = title,
+                Description = description,
                 Color = 0
-
             };
 
             var data = new DiscordMessagePayload
             {
-
-                //username = this._userName,
-                //content = message, //required
-                //avatar_url = "",
-
                 embeds = new DiscordEmbed[] { embed },
                 username = _userName
             };
@@ -57,10 +51,10 @@ namespace FunctionApp1.Utility.cs
             {
                 Author = new Author()
                 {
-                    Name = header//"Authors gonna author"
+                    Name = header
                 },
-                Title = title, //"Testing title",
-                Description = description, //yo peep dis shit dawg
+                Title = title,
+                Description = description,
                 Color = 0,
                 Image = new Image()
                 {
@@ -70,11 +64,6 @@ namespace FunctionApp1.Utility.cs
 
             var data = new
             {
-
-                //username = this._userName,
-                //content = message, //required
-                //avatar_url = "",
-
                 embeds = new DiscordEmbed[] { embed },
                 username = _userName
             };
