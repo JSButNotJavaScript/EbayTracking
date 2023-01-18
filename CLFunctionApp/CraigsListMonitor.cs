@@ -1,3 +1,4 @@
+using AngleSharp.Common;
 using Azure.Storage.Blobs;
 using CLFunctionApp.Utility.cs;
 using FunctionApp1.Utility.cs;
@@ -19,27 +20,33 @@ namespace CLFunctionApp
         {
             _logger = loggerFactory.CreateLogger<CraigsListMonitor>();
             _configuration = configuration;
+
+            var configurationDictionary = _configuration.GetChildren().ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
+            ADDED_LISTINGS_DISCORD_WEBHOOK = configurationDictionary["ADDED_LISTINGS_DISCORD_WEBHOOK"];
+            SOLD_LISTINGS_DISCORD_WEBHOOK = configurationDictionary["SOLD_LISTINGS_DISCORD_WEBHOOK"];
+            MONITOR_HEALTH_DISCORD_WEBHOOK = configurationDictionary["MONITOR_HEALTH_DISCORD_WEBHOOK"];
+            CRAIGSLIST_SEARCH_URL = configurationDictionary["CRAIGSLIST_SEARCH_URL"];
         }
 
         /// <summary>
         /// Receives message when a new listing is added
         /// </summary>
-        private static readonly string UPDATED_LISTINGS_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1049207061147303986/k3IiOhELq61GWUUhWmTTFjSOxjsrrHiZKcMYO6KdfWSWsCe8q0PKkRawQlVePwhqT-8L";
+        private static string ADDED_LISTINGS_DISCORD_WEBHOOK;
 
         /// <summary>
         /// Receives a message on every run of the function app, also whenever an exception occurs
         /// </summary>
-        private static readonly string MONITOR_HEALTH_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/894835740716986368/xxy0-tlvZafJdgcR-oBkcGHqPwl_-nXaO4NakSM3q4Z0KGZO2XURY0RJVQql774MV7xV";
+        private static string MONITOR_HEALTH_DISCORD_WEBHOOK;
 
         /// <summary>
         /// Receives message when a listing is sold
         /// </summary>
-        private static readonly string SOLD_LISTINGS_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1050129633292595290/Nnl5-vFXooxpiuT4nEqvN-4SWejPtTL9LfX1ddgIYDSlLsMwBiDXKsikqcIH6opxg1p9";
+        private static string SOLD_LISTINGS_DISCORD_WEBHOOK;
 
         /// <summary>
         /// URL to scrape craigslist listings from
         /// </summary>
-        private static readonly string CRAIGSLIST_SEARCH_URL = "https://vancouver.craigslist.org/search/sss?query=fender+stratocaster&excats=92-40-19-22-15-1&sort=dateoldest&min_price=500&max_price=2000";
+        private static string CRAIGSLIST_SEARCH_URL;
 
         private static readonly string BLOB_CONTAINER_NAME = "listings";
 
@@ -55,6 +62,7 @@ namespace CLFunctionApp
         {
             _logger.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             _logger.LogInformation($"Next timer schedule at: {myTimer.ScheduleStatus.Next}");
+
 
             var httpClient = new HttpClient();
             var discordLogger = new DiscordLogger(httpClient);
@@ -80,7 +88,7 @@ namespace CLFunctionApp
                     var header = $"{newlyPostedListings.Count} NEW POSTS ";
                     var title = $"Fender Search Total Results: {currentListings.Count}";
 
-                    postDiscordMessageSucceeded = await discordLogger.LogMesage(UPDATED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
+                    postDiscordMessageSucceeded = await discordLogger.LogMesage(ADDED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
                 }
 
                 if (anySoldPosts)
