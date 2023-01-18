@@ -13,18 +13,12 @@ namespace CLFunctionApp
     {
         private readonly ILogger _logger;
         private readonly IConfiguration _configuration;
-        private readonly HttpClient _httpClient;
-        private readonly DiscordLogger _discordLogger;
-        private readonly CraigslistScraper _craigslistScraper;
 
         public CraigsListMonitor(ILoggerFactory loggerFactory,
              IConfiguration configuration)
         {
             _logger = loggerFactory.CreateLogger<CraigsListMonitor>();
             _configuration = configuration;
-            _httpClient = new HttpClient();
-            _discordLogger = new DiscordLogger(_httpClient);
-            _craigslistScraper = new CraigslistScraper();
         }
 
         private static readonly string UPDATED_LISTINGS_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1049207061147303986/k3IiOhELq61GWUUhWmTTFjSOxjsrrHiZKcMYO6KdfWSWsCe8q0PKkRawQlVePwhqT-8L";
@@ -35,35 +29,9 @@ namespace CLFunctionApp
 
         private static readonly string CRAIGSLIST_SEARCH_URL = "https://vancouver.craigslist.org/search/sss?query=fender+stratocaster&excats=92-40-19-22-15-1&sort=dateoldest&min_price=500&max_price=2000";
 
-        private static readonly string LISTINGS_BLOB_CONTAINER_NAME = "listings";
-
-        private static readonly string IMAGES_BLOB_CONTAINER_NAME = "images";
+        private static readonly string BLOB_CONTAINER_NAME = "listings";
 
         private static readonly string LISTINGS_BLOB_NAME = "ListingDictionary";
-
-        private async Task DownloadListingsPhotos(IList<CraigsListProduct> listings)
-        {
-            await _discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK,
-                new DiscordMessage() { Header = "Downloading Listing Images to Blob Storage. ", Title = $"{listings.Count} listings being downloaded" });
-
-            var uploadImageTasks = new List<Task>();
-
-            foreach (var listing in listings)
-            {
-                var uploadImageTask = Task.Run(async () =>
-                {
-                    var imageUrl = await _craigslistScraper.ScrapeImageUrlFromListing(listing.Url);
-                    var bytes = await _httpClient.GetByteArrayAsync(imageUrl);
-
-                    using var stream = new MemoryStream(bytes);
-                    var imageBlobClient = GetImagesBlobClient(imageUrl);
-                    var uploadImageTask = imageBlobClient.UploadAsync(stream);
-                });
-                uploadImageTasks.Add(uploadImageTask);
-            }
-
-            await Task.WhenAll(uploadImageTasks);
-        }
 
         // 0 * * * * *	every minute	09:00:00; 09:01:00; 09:02:00; � 10:00:00
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
@@ -76,7 +44,11 @@ namespace CLFunctionApp
             _logger.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             _logger.LogInformation($"Next timer schedule at: {myTimer.ScheduleStatus.Next}");
 
-            var currentListings = await _craigslistScraper.ScrapeListings(CRAIGSLIST_SEARCH_URL);
+            var httpClient = new HttpClient();
+            var discordLogger = new DiscordLogger(httpClient);
+
+            var craigsListScraper = new CraigslistScraper();
+            var currentListings = await craigsListScraper.ScrapeListings(CRAIGSLIST_SEARCH_URL);
 
             var blobClient = GetListingsBlobClient();
 
@@ -96,9 +68,7 @@ namespace CLFunctionApp
                     var header = $"{newlyPostedListings.Count} NEW POSTS ";
                     var title = $"Fender Search Total Results: {currentListings.Count}";
 
-                    postDiscordMessageSucceeded = await _discordLogger.LogMesage(UPDATED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
-
-                    await DownloadListingsPhotos(newlyPostedListings);
+                    postDiscordMessageSucceeded = await discordLogger.LogMesage(UPDATED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
                 }
 
                 if (anySoldPosts)
@@ -107,28 +77,28 @@ namespace CLFunctionApp
                     var header = $"{soldListings.Count} SOLD POSTS ";
                     var title = $"Fender Search Total Results: {currentListings.Count}";
 
-                    postDiscordMessageSucceeded = await _discordLogger.LogMesage(SOLD_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
+                    postDiscordMessageSucceeded = await discordLogger.LogMesage(SOLD_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
 
                 }
 
                 if (!postDiscordMessageSucceeded)
                 {
-                    await _discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "FAILED TO POST UPDATE. ", Title = $"Previous listing had {previousListings.Count} results" });
+                    await discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "FAILED TO POST UPDATE. ", Title = $"Previous listing had {previousListings.Count} results" });
                 }
 
             }
             else
             {
-                await _discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "Azure Function still running. ", Title = $"Previous listing had {previousListings.Count} results" });
+                await discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "Azure Function still running. ", Title = $"Previous listing had {previousListings.Count} results" });
             }
 
             await UploadProductsToBlob(currentListings, blobClient);
         }
 
-        private BlobContainerClient GetContainerClient(string containerName)
+        private BlobContainerClient GetCloudStorageAccount()
         {
             var connString = _configuration.GetValue<string>("AzureWebJobsStorage");
-            var client = new BlobContainerClient(connString, containerName);
+            var client = new BlobContainerClient(connString, BLOB_CONTAINER_NAME);
             return client;
         }
 
@@ -152,18 +122,9 @@ namespace CLFunctionApp
 
         private BlobClient GetListingsBlobClient()
         {
-            var blobContainerClient = GetContainerClient(LISTINGS_BLOB_CONTAINER_NAME);
+            var blobContainerClient = GetCloudStorageAccount();
 
             var blobClient = blobContainerClient.GetBlobClient(LISTINGS_BLOB_NAME);
-
-            return blobClient;
-        }
-
-        private BlobClient GetImagesBlobClient(string imageName)
-        {
-            var blobContainerClient = GetContainerClient(IMAGES_BLOB_CONTAINER_NAME);
-
-            var blobClient = blobContainerClient.GetBlobClient(imageName);
 
             return blobClient;
         }
