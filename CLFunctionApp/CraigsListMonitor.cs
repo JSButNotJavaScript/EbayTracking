@@ -1,7 +1,7 @@
 using Azure.Storage.Blobs;
+using CLFunctionApp.Utility.cs;
 using FunctionApp1.Utility.cs;
 using Microsoft.Azure.Functions.Worker;
-using Microsoft.Azure.WebJobs;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.Logging;
 using System.Text;
@@ -21,12 +21,24 @@ namespace CLFunctionApp
             _configuration = configuration;
         }
 
+        /// <summary>
+        /// Receives message when a new listing is added
+        /// </summary>
         private static readonly string UPDATED_LISTINGS_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1049207061147303986/k3IiOhELq61GWUUhWmTTFjSOxjsrrHiZKcMYO6KdfWSWsCe8q0PKkRawQlVePwhqT-8L";
 
+        /// <summary>
+        /// Receives a message on every run of the function app, also whenever an exception occurs
+        /// </summary>
         private static readonly string MONITOR_HEALTH_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/894835740716986368/xxy0-tlvZafJdgcR-oBkcGHqPwl_-nXaO4NakSM3q4Z0KGZO2XURY0RJVQql774MV7xV";
 
+        /// <summary>
+        /// Receives message when a listing is sold
+        /// </summary>
         private static readonly string SOLD_LISTINGS_DISCORD_WEBHOOK = "https://discord.com/api/webhooks/1050129633292595290/Nnl5-vFXooxpiuT4nEqvN-4SWejPtTL9LfX1ddgIYDSlLsMwBiDXKsikqcIH6opxg1p9";
 
+        /// <summary>
+        /// URL to scrape craigslist listings from
+        /// </summary>
         private static readonly string CRAIGSLIST_SEARCH_URL = "https://vancouver.craigslist.org/search/sss?query=fender+stratocaster&excats=92-40-19-22-15-1&sort=dateoldest&min_price=500&max_price=2000";
 
         private static readonly string BLOB_CONTAINER_NAME = "listings";
@@ -37,7 +49,7 @@ namespace CLFunctionApp
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
         // 0 0 * * * *	every hour(hourly) 09:00:00; 10:00:00; 11:00:00
         [Function("Function1")]
-        public async Task Run([TimerTrigger("0 */3 * * * *")] MyInfo myTimer
+        public async Task Run([TimerTrigger("0 */3 * * * *")] TimerInfo myTimer
 
             )
         {
@@ -95,13 +107,6 @@ namespace CLFunctionApp
             await UploadProductsToBlob(currentListings, blobClient);
         }
 
-        private BlobContainerClient GetCloudStorageAccount()
-        {
-            var connString = _configuration.GetValue<string>("AzureWebJobsStorage");
-            var client = new BlobContainerClient(connString, BLOB_CONTAINER_NAME);
-            return client;
-        }
-
         private async Task<Dictionary<string, CraigsListProduct>> GetPreviousListings(BlobClient blobClient)
         {
             byte[] oldListingBytes;
@@ -120,6 +125,13 @@ namespace CLFunctionApp
             return dictionary;
         }
 
+        private BlobContainerClient GetCloudStorageAccount()
+        {
+            var connString = _configuration.GetValue<string>("AzureWebJobsStorage");
+            var client = new BlobContainerClient(connString, BLOB_CONTAINER_NAME);
+            return client;
+        }
+
         private BlobClient GetListingsBlobClient()
         {
             var blobContainerClient = GetCloudStorageAccount();
@@ -129,8 +141,15 @@ namespace CLFunctionApp
             return blobClient;
         }
 
-
-        private async Task<(IList<CraigsListProduct> newlyPostedListings, IList<CraigsListProduct> SoldListings)> ComparePreviousAndCurrentListings(IDictionary<string, CraigsListProduct> currentListings, IDictionary<string, CraigsListProduct> previousListings)
+        /// <summary>
+        /// Creates lists of sold postings and newly added postings 
+        /// Sold postings are listings that were present during the last run, and are no longer present. Vice-versa for newly added postings
+        /// </summary>
+        /// <param name="currentListings">current craigslist listings</param>
+        /// <param name="previousListings">craigslist listings from the last run</param>
+        /// <returns>lists of sold postings and newly added postings</returns>
+        private async Task<(IList<CraigsListProduct> newlyPostedListings, IList<CraigsListProduct> SoldListings)>
+            ComparePreviousAndCurrentListings(IDictionary<string, CraigsListProduct> currentListings, IDictionary<string, CraigsListProduct> previousListings)
         {
 
             var newlyPostedListings = currentListings.Values.Where(l => !previousListings.ContainsKey(l.Url)).ToList();
@@ -150,21 +169,5 @@ namespace CLFunctionApp
 
             return true;
         }
-    }
-
-    public class MyInfo
-    {
-        public MyScheduleStatus ScheduleStatus { get; set; }
-
-        public bool IsPastDue { get; set; }
-    }
-
-    public class MyScheduleStatus
-    {
-        public DateTime Last { get; set; }
-
-        public DateTime Next { get; set; }
-
-        public DateTime LastUpdated { get; set; }
     }
 }
