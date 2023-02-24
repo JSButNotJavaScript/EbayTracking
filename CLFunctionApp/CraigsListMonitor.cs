@@ -1,4 +1,3 @@
-using AngleSharp.Common;
 using Azure.Storage.Blobs;
 using CLFunctionApp.Utility.cs;
 using FunctionApp1.Utility.cs;
@@ -56,7 +55,7 @@ namespace CLFunctionApp
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
         // 0 0 * * * *	every hour(hourly) 09:00:00; 10:00:00; 11:00:00
         [Function("Function1")]
-        public async Task Run([TimerTrigger("0 */3 * * * *")] TimerInfo myTimer
+        public async Task Run([TimerTrigger("0 * * * * *")] TimerInfo myTimer
 
             )
         {
@@ -67,7 +66,7 @@ namespace CLFunctionApp
             var httpClient = new HttpClient();
             var discordLogger = new DiscordLogger(httpClient);
 
-            var craigsListScraper = new CraigslistScraper();
+            var craigsListScraper = new CraigslistSearchResultFetcher();
             var currentListings = await craigsListScraper.ScrapeListings(CRAIGSLIST_SEARCH_URL);
 
             var blobClient = GetListingsBlobClient();
@@ -84,7 +83,7 @@ namespace CLFunctionApp
                 var postDiscordMessageSucceeded = true;
                 if (anyNewPosts)
                 {
-                    var description = "**NEW/UPDATED LISTINGS:**  \n" + string.Join(" \n", newlyPostedListings.Select(l => $"{l.Url}  {(l.Price)}"));
+                    var description = "**NEW/UPDATED LISTINGS:**  \n" + string.Join(" \n", newlyPostedListings.Select(l => $"{l.Url}  ${(l.Price)}"));
                     var header = $"{newlyPostedListings.Count} NEW POSTS ";
                     var title = $"Fender Search Total Results: {currentListings.Count}";
 
