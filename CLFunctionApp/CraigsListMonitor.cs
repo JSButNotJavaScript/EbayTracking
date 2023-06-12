@@ -22,10 +22,10 @@ namespace CLFunctionApp
             _configuration = configuration;
 
             var configurationDictionary = _configuration.GetChildren().ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
-            ADDED_LISTINGS_DISCORD_WEBHOOK = configurationDictionary["ADDED_LISTINGS_DISCORD_WEBHOOK"];
-            SOLD_LISTINGS_DISCORD_WEBHOOK = configurationDictionary["SOLD_LISTINGS_DISCORD_WEBHOOK"];
-            MONITOR_HEALTH_DISCORD_WEBHOOK = configurationDictionary["MONITOR_HEALTH_DISCORD_WEBHOOK"];
-            CRAIGSLIST_SEARCH_URL = configurationDictionary["CRAIGSLIST_SEARCH_URL"];
+            ADDED_LISTINGS_DISCORD_WEBHOOK = configurationDictionary[nameof(ADDED_LISTINGS_DISCORD_WEBHOOK)];
+            SOLD_LISTINGS_DISCORD_WEBHOOK = configurationDictionary[nameof(SOLD_LISTINGS_DISCORD_WEBHOOK)];
+            MONITOR_HEALTH_DISCORD_WEBHOOK = configurationDictionary[nameof(MONITOR_HEALTH_DISCORD_WEBHOOK)];
+            EBAY_SEARCH_URL = configurationDictionary[nameof(EBAY_SEARCH_URL)];
         }
 
         /// <summary>
@@ -46,11 +46,11 @@ namespace CLFunctionApp
         /// <summary>
         /// URL to scrape craigslist listings from
         /// </summary>
-        private static string CRAIGSLIST_SEARCH_URL;
+        private static string EBAY_SEARCH_URL;
 
-        private static readonly string BLOB_CONTAINER_NAME = "listings";
+        private static readonly string BLOB_CONTAINER_NAME = "ebay_listings";
 
-        private static readonly string LISTINGS_BLOB_NAME = "ListingDictionary";
+        private static readonly string LISTINGS_BLOB_NAME = "ebay_ListingDictionary";
 
         // 0 * * * * *	every minute	09:00:00; 09:01:00; 09:02:00; � 10:00:00
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
@@ -67,8 +67,8 @@ namespace CLFunctionApp
             var httpClient = new HttpClient();
             var discordLogger = new DiscordLogger(httpClient);
 
-            var craigsListScraper = new CraigslistScraper();
-            var currentListings = await craigsListScraper.ScrapeListings(CRAIGSLIST_SEARCH_URL);
+            var ebayScraper = new CraigslistScraper();
+            var currentListings = await ebayScraper.ScrapeListings(EBAY_SEARCH_URL);
 
             var blobClient = GetListingsBlobClient();
 
