@@ -1,6 +1,6 @@
 using AngleSharp.Common;
 using Azure.Storage.Blobs;
-using CLFunctionApp.Utility.cs;
+using EbayFunctionApp.Utility.cs;
 using FunctionApp1.Utility.cs;
 using Microsoft.Azure.Functions.Worker;
 using Microsoft.Extensions.Configuration;
@@ -8,17 +8,17 @@ using Microsoft.Extensions.Logging;
 using System.Text;
 using System.Text.Json;
 
-namespace CLFunctionApp
+namespace EbayFunctionApp
 {
-    public class CraigsListMonitor
+    public class EbayMonitor
     {
         private readonly ILogger _logger;
         private readonly IConfiguration _configuration;
 
-        public CraigsListMonitor(ILoggerFactory loggerFactory,
+        public EbayMonitor(ILoggerFactory loggerFactory,
              IConfiguration configuration)
         {
-            _logger = loggerFactory.CreateLogger<CraigsListMonitor>();
+            _logger = loggerFactory.CreateLogger<EbayMonitor>();
             _configuration = configuration;
 
             var configurationDictionary = _configuration.GetChildren().ToDictionary(kvp => kvp.Key, kvp => kvp.Value);
@@ -48,15 +48,17 @@ namespace CLFunctionApp
         /// </summary>
         private static string EBAY_SEARCH_URL;
 
-        private static readonly string BLOB_CONTAINER_NAME = "ebay_listings";
+        private static bool LOG_RESULTS = false;
 
-        private static readonly string LISTINGS_BLOB_NAME = "ebay_ListingDictionary";
+        private static readonly string BLOB_CONTAINER_NAME = "ebaylistings";
+
+        private static readonly string LISTINGS_BLOB_NAME = "ListingDictionary";
 
         // 0 * * * * *	every minute	09:00:00; 09:01:00; 09:02:00; � 10:00:00
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
         // 0 0 * * * *	every hour(hourly) 09:00:00; 10:00:00; 11:00:00
         [Function("Function1")]
-        public async Task Run([TimerTrigger("0 */3 * * * *")] TimerInfo myTimer
+        public async Task Run([TimerTrigger("0 * * * * *")] TimerInfo myTimer
 
             )
         {
@@ -67,55 +69,62 @@ namespace CLFunctionApp
             var httpClient = new HttpClient();
             var discordLogger = new DiscordLogger(httpClient);
 
-            var ebayScraper = new CraigslistScraper();
+            var ebayScraper = new EbayScraper();
             var currentListings = await ebayScraper.ScrapeListings(EBAY_SEARCH_URL);
 
-            var blobClient = GetListingsBlobClient();
+            var numListings = currentListings.Count();
 
-            var previousListings = await GetPreviousListings(blobClient);
+            var blobclient = GetListingsBlobClient();
 
-            var (newlyPostedListings, soldListings) = await ComparePreviousAndCurrentListings(currentListings, previousListings);
+            var previousListings = await GetPreviousListings(blobclient);
+
+            var (newlyPostedListings, soldlistings) = await ComparePreviousAndCurrentListings(currentListings, previousListings);
 
             var anyNewPosts = newlyPostedListings.Count > 0;
-            var anySoldPosts = soldListings.Count > 0;
+            //var anysoldposts = soldlistings.count > 0;
 
-            if (anyNewPosts || anySoldPosts)
+
+            //if (log_results)
+            //{
+
+            //    if (anynewposts || anysoldposts)
+            //    {
+            var postdiscordmessagesucceeded = true;
+            if (anyNewPosts)
             {
-                var postDiscordMessageSucceeded = true;
-                if (anyNewPosts)
-                {
-                    var description = "**NEW/UPDATED LISTINGS:**  \n" + string.Join(" \n", newlyPostedListings.Select(l => $"{l.Url}  {(l.Price)}"));
-                    var header = $"{newlyPostedListings.Count} NEW POSTS ";
-                    var title = $"Fender Search Total Results: {currentListings.Count}";
+                var description = "**new/updated listings:**  \n" + string.Join(" \n", newlyPostedListings.Select(l => $"{l.Url}  {l.Price}  {l.ImageUrl}"));
+                var header = $"{newlyPostedListings.Count} new posts ";
+                var title = $"Ebay Sneaker search total results: {currentListings.Count}";
 
-                    postDiscordMessageSucceeded = await discordLogger.LogMesage(ADDED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
-                }
-
-                if (anySoldPosts)
-                {
-                    var description = "**SOLD LISTINGS: ** \n" + string.Join(" \n", soldListings.Select(l => $"{l.Url}  {(l.Price)}"));
-                    var header = $"{soldListings.Count} SOLD POSTS ";
-                    var title = $"Fender Search Total Results: {currentListings.Count}";
-
-                    postDiscordMessageSucceeded = await discordLogger.LogMesage(SOLD_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
-
-                }
-
-                if (!postDiscordMessageSucceeded)
-                {
-                    await discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "FAILED TO POST UPDATE. ", Title = $"Previous listing had {previousListings.Count} results" });
-                }
-
-            }
-            else
-            {
-                await discordLogger.LogMesage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "Azure Function still running. ", Title = $"Previous listing had {previousListings.Count} results" });
+                postdiscordmessagesucceeded = await discordLogger.LogMesage(ADDED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
             }
 
-            await UploadProductsToBlob(currentListings, blobClient);
+            //        if (anysoldposts)
+            //        {
+            //            var description = "**sold listings: ** \n" + string.join(" \n", soldlistings.select(l => $"{l.url}  {(l.price)}"));
+            //            var header = $"{soldlistings.count} sold posts ";
+            //            var title = $"fender search total results: {currentlistings.count}";
+
+            //            postdiscordmessagesucceeded = await discordlogger.logmesage(sold_listings_discord_webhook, new discordmessage() { description = description, title = title, header = header });
+
+            //        }
+
+            //        if (!postdiscordmessagesucceeded)
+            //        {
+            //            await discordlogger.logmesage(monitor_health_discord_webhook, new discordmessage() { header = "failed to post update. ", title = $"previous listing had {previouslistings.count} results" });
+            //        }
+
+            //    }
+            //    else
+            //    {
+            //        await discordlogger.logmesage(monitor_health_discord_webhook, new discordmessage() { header = "azure function still running. ", title = $"previous listing had {previouslistings.count} results" });
+            //    }
+            //}
+
+            await UploadProductsToBlob(currentListings, blobclient);
         }
 
-        private async Task<Dictionary<string, CraigsListProduct>> GetPreviousListings(BlobClient blobClient)
+        private async Task<Dictionary<string, EbayProduct>> GetPreviousListings(BlobClient blobClient)
         {
             byte[] oldListingBytes;
 
@@ -128,7 +137,7 @@ namespace CLFunctionApp
 
             var oldListingString = Encoding.UTF8.GetString(oldListingBytes);
 
-            var dictionary = JsonSerializer.Deserialize<Dictionary<string, CraigsListProduct>>(oldListingString);
+            var dictionary = JsonSerializer.Deserialize<Dictionary<string, EbayProduct>>(oldListingString);
 
             return dictionary;
         }
@@ -156,8 +165,8 @@ namespace CLFunctionApp
         /// <param name="currentListings">current craigslist listings</param>
         /// <param name="previousListings">craigslist listings from the last run</param>
         /// <returns>lists of sold postings and newly added postings</returns>
-        private async Task<(IList<CraigsListProduct> newlyPostedListings, IList<CraigsListProduct> SoldListings)>
-            ComparePreviousAndCurrentListings(IDictionary<string, CraigsListProduct> currentListings, IDictionary<string, CraigsListProduct> previousListings)
+        private async Task<(IList<EbayProduct> newlyPostedListings, IList<EbayProduct> SoldListings)>
+            ComparePreviousAndCurrentListings(IDictionary<string, EbayProduct> currentListings, IDictionary<string, EbayProduct> previousListings)
         {
 
             var newlyPostedListings = currentListings.Values.Where(l => !previousListings.ContainsKey(l.Url)).ToList();
@@ -166,7 +175,7 @@ namespace CLFunctionApp
             return (newlyPostedListings, soldListings);
         }
 
-        private async Task<bool> UploadProductsToBlob(IDictionary<string, CraigsListProduct> products, BlobClient blobClient)
+        private async Task<bool> UploadProductsToBlob(IDictionary<string, EbayProduct> products, BlobClient blobClient)
         {
             var serializedDictionary = JsonSerializer.Serialize(products);
 
