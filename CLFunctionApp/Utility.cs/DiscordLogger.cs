@@ -175,7 +175,7 @@ namespace FunctionApp1.Utility.cs
             [JsonProperty("color")]
             public int Color;
 
-            [JsonProperty("Image")]
+            [JsonProperty("image")]
             public Image? Image;
         }
 
@@ -186,6 +186,7 @@ namespace FunctionApp1.Utility.cs
         }
         public record Image
         {
+            [JsonProperty("url")]
             public string Url;
         }
 

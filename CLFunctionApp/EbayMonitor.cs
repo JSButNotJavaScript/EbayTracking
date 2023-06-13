@@ -58,7 +58,7 @@ namespace EbayFunctionApp
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
         // 0 0 * * * *	every hour(hourly) 09:00:00; 10:00:00; 11:00:00
         [Function("Function1")]
-        public async Task Run([TimerTrigger("0 */3 * * * *")] TimerInfo myTimer
+        public async Task Run([TimerTrigger("0 * * * * *")] TimerInfo myTimer
 
             )
         {
