@@ -26,6 +26,10 @@ namespace EbayFunctionApp
             SOLD_LISTINGS_DISCORD_WEBHOOK = configurationDictionary[nameof(SOLD_LISTINGS_DISCORD_WEBHOOK)];
             MONITOR_HEALTH_DISCORD_WEBHOOK = configurationDictionary[nameof(MONITOR_HEALTH_DISCORD_WEBHOOK)];
             EBAY_SEARCH_URL = configurationDictionary[nameof(EBAY_SEARCH_URL)];
+
+            httpClient = new HttpClient();
+            discordLogger = new DiscordLogger(httpClient);
+
         }
 
         /// <summary>
@@ -54,20 +58,19 @@ namespace EbayFunctionApp
 
         private static readonly string LISTINGS_BLOB_NAME = "ListingDictionary";
 
+        private readonly DiscordLogger discordLogger;
+        private readonly HttpClient httpClient;
+
         // 0 * * * * *	every minute	09:00:00; 09:01:00; 09:02:00; � 10:00:00
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
         // 0 0 * * * *	every hour(hourly) 09:00:00; 10:00:00; 11:00:00
         [Function("Function1")]
-        public async Task Run([TimerTrigger("0 * * * * *")] TimerInfo myTimer
+        public async Task Run([TimerTrigger("0 */2 * * * *")] TimerInfo myTimer
 
             )
         {
             _logger.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             _logger.LogInformation($"Next timer schedule at: {myTimer.ScheduleStatus.Next}");
-
-
-            var httpClient = new HttpClient();
-            var discordLogger = new DiscordLogger(httpClient);
 
             var ebayScraper = new EbayScraper();
             var currentListings = await ebayScraper.ScrapeListings(EBAY_SEARCH_URL);
@@ -81,7 +84,7 @@ namespace EbayFunctionApp
             var (newlyPostedListings, soldlistings) = await ComparePreviousAndCurrentListings(currentListings, previousListings);
 
             var anyNewPosts = newlyPostedListings.Count > 0;
-    
+
             var postDiscordMessageSucceeded = true;
             if (anyNewPosts)
             {
@@ -97,9 +100,22 @@ namespace EbayFunctionApp
                 await discordLogger.LogMessage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "failed to post update. ", Title = $"previous listing had {previousListings.Count} results" });
             }
 
-            await discordLogger.LogMessage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = $"{nameof(EbayMonitor)} still running", Title = $"previous listing had {previousListings.Count} results" });
+            await LogMonitorHealth(previousListings.Count);
 
             await UploadProductsToBlob(currentListings, blobclient);
+        }
+
+        private async Task LogMonitorHealth(int previousListingsCount)
+        {
+            var loggingFrequencyMinutes = 5;
+            var currentTime = DateTime.UtcNow;
+
+            var isTimeToLog = currentTime.Minute % loggingFrequencyMinutes == 0;
+
+            if (isTimeToLog)
+            {
+                await discordLogger.LogMessage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = $"{nameof(EbayMonitor)} still running", Title = $"previous listing had {previousListingsCount} results" });
+            }
         }
 
         private async Task<Dictionary<string, EbayProduct>> GetPreviousListings(BlobClient blobClient)
