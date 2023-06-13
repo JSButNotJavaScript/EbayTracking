@@ -58,7 +58,7 @@ namespace EbayFunctionApp
         // 0 */5 * * * *	every 5 minutes	09:00:00; 09:05:00, ...
         // 0 0 * * * *	every hour(hourly) 09:00:00; 10:00:00; 11:00:00
         [Function("Function1")]
-        public async Task Run([TimerTrigger("0 * * * * *")] TimerInfo myTimer
+        public async Task Run([TimerTrigger("0 */3 * * * *")] TimerInfo myTimer
 
             )
         {
@@ -81,45 +81,23 @@ namespace EbayFunctionApp
             var (newlyPostedListings, soldlistings) = await ComparePreviousAndCurrentListings(currentListings, previousListings);
 
             var anyNewPosts = newlyPostedListings.Count > 0;
-            //var anysoldposts = soldlistings.count > 0;
-
-
-            //if (log_results)
-            //{
-
-            //    if (anynewposts || anysoldposts)
-            //    {
-            var postdiscordmessagesucceeded = true;
+    
+            var postDiscordMessageSucceeded = true;
             if (anyNewPosts)
             {
-                var description = "**new/updated listings:**  \n" + string.Join(" \n", newlyPostedListings.Select(l => $"{l.Url}  {l.Price}  {l.ImageUrl}"));
-                var header = $"{newlyPostedListings.Count} new posts ";
-                var title = $"Ebay Sneaker search total results: {currentListings.Count}";
+                var discordMessages = newlyPostedListings
+                    .Select(l => new DiscordMessage() { ImageUrl = l.ImageUrl, Description = l.Url, Title = l.Title, Header = l.Title })
+                    .ToList();
 
-                postdiscordmessagesucceeded = await discordLogger.LogMesage(ADDED_LISTINGS_DISCORD_WEBHOOK, new DiscordMessage() { Description = description, Title = title, Header = header });
+                postDiscordMessageSucceeded = await discordLogger.LogMessages(ADDED_LISTINGS_DISCORD_WEBHOOK, discordMessages);
             }
 
-            //        if (anysoldposts)
-            //        {
-            //            var description = "**sold listings: ** \n" + string.join(" \n", soldlistings.select(l => $"{l.url}  {(l.price)}"));
-            //            var header = $"{soldlistings.count} sold posts ";
-            //            var title = $"fender search total results: {currentlistings.count}";
+            if (!postDiscordMessageSucceeded)
+            {
+                await discordLogger.LogMessage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "failed to post update. ", Title = $"previous listing had {previousListings.Count} results" });
+            }
 
-            //            postdiscordmessagesucceeded = await discordlogger.logmesage(sold_listings_discord_webhook, new discordmessage() { description = description, title = title, header = header });
-
-            //        }
-
-            //        if (!postdiscordmessagesucceeded)
-            //        {
-            //            await discordlogger.logmesage(monitor_health_discord_webhook, new discordmessage() { header = "failed to post update. ", title = $"previous listing had {previouslistings.count} results" });
-            //        }
-
-            //    }
-            //    else
-            //    {
-            //        await discordlogger.logmesage(monitor_health_discord_webhook, new discordmessage() { header = "azure function still running. ", title = $"previous listing had {previouslistings.count} results" });
-            //    }
-            //}
+            await discordLogger.LogMessage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = $"{nameof(EbayMonitor)} still running", Title = $"previous listing had {previousListings.Count} results" });
 
             await UploadProductsToBlob(currentListings, blobclient);
         }

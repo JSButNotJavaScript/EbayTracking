@@ -38,7 +38,8 @@ namespace FunctionApp1.Utility.cs
 
                 var imageUrl = imageElement.Source;
                 var price = e.QuerySelector(".s-item__price")?.InnerHtml;
-                return new EbayProduct() { Price = price, Url = listingUrl, ImageUrl = imageUrl };
+                var title = e.QuerySelector(".s-item__title")?.InnerHtml;
+                return new EbayProduct() { Price = price, Url = listingUrl, ImageUrl = imageUrl, Title = title };
             }).ToList();
 
             return products.ToDictionary(p => p.Url, p => p);
