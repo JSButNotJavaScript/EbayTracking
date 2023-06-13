@@ -86,7 +86,7 @@ namespace EbayFunctionApp
             if (anyNewPosts)
             {
                 var discordMessages = newlyPostedListings
-                    .Select(l => new DiscordMessage() { ImageUrl = l.ImageUrl, Description = l.Url, Title = l.Title, Header = l.Title })
+                    .Select(l => new DiscordMessage() { ImageUrl = l.ImageUrl, Description = l.Url, Title = l.Price, Header = l.Title })
                     .ToList();
 
                 postDiscordMessageSucceeded = await discordLogger.LogMessages(ADDED_LISTINGS_DISCORD_WEBHOOK, discordMessages);
