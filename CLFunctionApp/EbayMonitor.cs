@@ -85,20 +85,19 @@ namespace EbayFunctionApp
 
             var anyNewPosts = newlyPostedListings.Count > 0;
 
-            var postDiscordMessageSucceeded = true;
             if (anyNewPosts)
             {
                 var discordMessages = newlyPostedListings
                     .Select(l => new DiscordMessage() { ImageUrl = l.ImageUrl, Description = l.Url, Title = l.Price, Header = l.Title })
                     .ToList();
 
-                postDiscordMessageSucceeded = await discordLogger.LogMessages(ADDED_LISTINGS_DISCORD_WEBHOOK, discordMessages);
+                (var postDiscordMessageSucceeded, string[] errorMessages) = await discordLogger.LogMessages(ADDED_LISTINGS_DISCORD_WEBHOOK, discordMessages);
+                if (!postDiscordMessageSucceeded)
+                {
+                    await discordLogger.LogMessage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "failed to post update. ", Title = $"previous listing had {previousListings.Count} results", Description = string.Join('\n', errorMessages) });
+                }
             }
 
-            if (!postDiscordMessageSucceeded)
-            {
-                await discordLogger.LogMessage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "failed to post update. ", Title = $"previous listing had {previousListings.Count} results" });
-            }
 
             await LogMonitorHealth(previousListings.Count);
 

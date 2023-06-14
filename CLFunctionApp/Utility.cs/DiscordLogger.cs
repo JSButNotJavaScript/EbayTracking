@@ -138,7 +138,7 @@ namespace FunctionApp1.Utility.cs
             return response.IsSuccessStatusCode;
         }
 
-        public async Task<bool> LogMessages(string webhookUrl, IList<DiscordMessage> messages)
+        public async Task<(bool, string[])> LogMessages(string webhookUrl, IList<DiscordMessage> messages)
         {
             var sendMessageTasks = new List<Task<HttpResponseMessage>>();
 
@@ -158,7 +158,14 @@ namespace FunctionApp1.Utility.cs
 
             var responses = await Task.WhenAll(sendMessageTasks);
 
-            return responses.Any(r => !r.IsSuccessStatusCode);
+            var failedResponses = responses.Where(r => !r.IsSuccessStatusCode).ToList();
+
+            if (failedResponses.Count == 0){
+                return (true, new string[] { });
+            }
+
+            var errorMessages = await Task.WhenAll(responses.Select(r => r.Content.ReadAsStringAsync()));
+            return (false, errorMessages.ToArray());
         }
 
         public record DiscordEmbed
