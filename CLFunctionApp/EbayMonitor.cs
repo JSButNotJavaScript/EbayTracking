@@ -101,6 +101,12 @@ namespace EbayFunctionApp
 
             await LogMonitorHealth(previousListings.Count);
 
+            // keep collection of all listings that we've seen
+            foreach(var kvp in previousListings)
+            {
+                currentListings[kvp.Key] = kvp.Value;
+            }
+
             await UploadProductsToBlob(currentListings, blobclient);
         }
 
