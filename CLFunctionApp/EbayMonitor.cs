@@ -69,6 +69,15 @@ namespace EbayFunctionApp
 
             )
         {
+
+            /** main idea of this function is to perform the following steps:
+             * 0. Load results of previously scraped ebay search results from database (or blob)
+             * 1. Scrape listings from first 48 results of an ebay search result URL 
+             * 2. Compare the previous scrapes listings with the new listings
+             * If any new listings are seen, a message will be sent to discord
+             * 3. Add any new scraped listings to the database (so this list will only get bigger.)
+            */
+
             _logger.LogInformation($"C# Timer trigger function executed at: {DateTime.Now}");
             _logger.LogInformation($"Next timer schedule at: {myTimer.ScheduleStatus.Next}");
 
@@ -85,27 +94,31 @@ namespace EbayFunctionApp
 
             var anyNewPosts = newlyPostedListings.Count > 0;
 
-            if (anyNewPosts)
+            // don't need to handle any IO, just return early
+            if (!anyNewPosts)
             {
-                var discordMessages = newlyPostedListings
-                    .Select(l => new DiscordMessage() { ImageUrl = l.ImageUrl, Description = l.Url, Title = l.Price, Header = l.Title })
-                    .ToList();
-
-                (var postDiscordMessageSucceeded, string[] errorMessages) = await discordLogger.LogMessages(ADDED_LISTINGS_DISCORD_WEBHOOK, discordMessages);
-                if (!postDiscordMessageSucceeded)
-                {
-                    await discordLogger.LogMessage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "failed to post update. ", Title = $"previous listing had {previousListings.Count} results", Description = string.Join('\n', errorMessages) });
-                }
+                return;
             }
 
+            var discordMessages = newlyPostedListings
+                .Select(l => new DiscordMessage() { ImageUrl = l.ImageUrl, Description = l.Url, Title = l.Price, Header = l.Title })
+                .ToList();
 
-            await LogMonitorHealth(previousListings.Count);
-
+            (var postDiscordMessageSucceeded, string[] errorMessages) = await discordLogger.LogMessages(ADDED_LISTINGS_DISCORD_WEBHOOK, discordMessages);
+            
             // keep collection of all listings that we've seen
-            foreach(var kvp in previousListings)
+            foreach (var kvp in previousListings)
             {
                 currentListings[kvp.Key] = kvp.Value;
             }
+
+            if (!postDiscordMessageSucceeded)
+            {
+                await discordLogger.LogMessage(MONITOR_HEALTH_DISCORD_WEBHOOK, new DiscordMessage() { Header = "failed to post update. ", Title = $"previous listing had {previousListings.Count} results. Current listings now has {currentListings.Count}", Description = string.Join('\n', errorMessages) });
+            }
+
+            await LogMonitorHealth(previousListings.Count);
+
 
             await UploadProductsToBlob(currentListings, blobclient);
         }
