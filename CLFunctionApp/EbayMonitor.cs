@@ -97,6 +97,7 @@ namespace EbayFunctionApp
             // don't need to handle any IO, just return early
             if (!anyNewPosts)
             {
+                await LogMonitorHealth(previousListings.Count);
                 return;
             }
 
