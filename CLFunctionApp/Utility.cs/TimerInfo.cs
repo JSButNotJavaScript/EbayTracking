@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace CLFunctionApp.Utility.cs
+namespace EbayFunctionApp.Utility.cs
 {
     public class TimerInfo
     {
