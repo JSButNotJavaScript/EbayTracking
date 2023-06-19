@@ -1,8 +1,4 @@
-﻿using AngleSharp;
-using AngleSharp.Dom;
-using AngleSharp.Html.Dom;
-
-namespace FunctionApp1.Utility.cs
+﻿namespace FunctionApp1.Utility.cs
 {
     public class EbayScraper
     {
