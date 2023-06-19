@@ -1,4 +1,3 @@
-using AngleSharp.Common;
 using Azure.Storage.Blobs;
 using EbayFunctionApp.Utility.cs;
 using FunctionApp1.Utility.cs;
@@ -30,6 +29,11 @@ namespace EbayFunctionApp
             httpClient = new HttpClient();
             discordLogger = new DiscordLogger(httpClient);
 
+            if (!configurationDictionary.TryGetValue(nameof(LISTINGS_BLOB_NAME), out LISTINGS_BLOB_NAME))
+            {
+                LISTINGS_BLOB_NAME = "ListingDictionary";
+            }
+
         }
 
         /// <summary>
@@ -56,7 +60,7 @@ namespace EbayFunctionApp
 
         private static readonly string BLOB_CONTAINER_NAME = "ebaylistings";
 
-        private static readonly string LISTINGS_BLOB_NAME = "ListingDictionary";
+        private readonly string LISTINGS_BLOB_NAME = "ListingDictionary";
 
         private readonly DiscordLogger discordLogger;
         private readonly HttpClient httpClient;
