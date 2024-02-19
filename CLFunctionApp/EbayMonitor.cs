@@ -98,7 +98,7 @@ namespace EbayFunctionApp
 
                 var numListings = currentListings.Count();
 
-                var blobclient = GetListingsBlobClient();
+                var blobclient = await GetListingsBlobClient();
 
                 var previousListings = await GetPreviousListings(blobclient);
 
@@ -180,7 +180,7 @@ namespace EbayFunctionApp
             return client;
         }
 
-        private async BlobClient GetListingsBlobClient()
+        private async Task<BlobClient> GetListingsBlobClient()
         {
             var blobContainerClient = GetCloudStorageAccount();
 
