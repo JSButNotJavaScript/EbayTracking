@@ -173,20 +173,20 @@ namespace EbayFunctionApp
             return dictionary;
         }
 
-        private BlobContainerClient GetCloudStorageAccount()
+        private async Task<BlobContainerClient> CreateBlobContainerClient()
         {
             var connString = _configuration.GetValue<string>("AzureWebJobsStorage");
             var client = new BlobContainerClient(connString, BLOB_CONTAINER_NAME);
+            await client.CreateIfNotExistsAsync();
+
             return client;
         }
 
         private async Task<BlobClient> GetListingsBlobClient()
         {
-            var blobContainerClient = GetCloudStorageAccount();
+            var blobContainerClient = await CreateBlobContainerClient();
 
             var blobClient = blobContainerClient.GetBlobClient(LISTINGS_BLOB_NAME);
-
-            await blobContainerClient.CreateIfNotExistsAsync();
 
             return blobClient;
         }
