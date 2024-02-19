@@ -180,11 +180,13 @@ namespace EbayFunctionApp
             return client;
         }
 
-        private BlobClient GetListingsBlobClient()
+        private async BlobClient GetListingsBlobClient()
         {
             var blobContainerClient = GetCloudStorageAccount();
 
             var blobClient = blobContainerClient.GetBlobClient(LISTINGS_BLOB_NAME);
+
+            await blobContainerClient.CreateIfNotExistsAsync();
 
             return blobClient;
         }
