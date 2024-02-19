@@ -177,7 +177,12 @@ namespace EbayFunctionApp
         {
             var connString = _configuration.GetValue<string>("AzureWebJobsStorage");
             var client = new BlobContainerClient(connString, BLOB_CONTAINER_NAME);
-            await client.CreateIfNotExistsAsync();
+
+            if (!await client.ExistsAsync())
+            {
+                _logger.LogInformation("Created Blob Container");
+                await client.CreateAsync();
+            }
 
             return client;
         }
