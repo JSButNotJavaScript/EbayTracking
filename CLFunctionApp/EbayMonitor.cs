@@ -159,6 +159,13 @@ namespace EbayFunctionApp
         {
             byte[] oldListingBytes;
 
+            var doesBlobExist = await blobClient.ExistsAsync();
+
+            if (!doesBlobExist)
+            {
+                return new Dictionary<string, EbayProduct>();
+            }
+
             using (MemoryStream ms = new MemoryStream())
             using (var oldListingStream = await blobClient.OpenReadAsync())
             {
