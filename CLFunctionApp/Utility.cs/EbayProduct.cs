@@ -4,20 +4,22 @@ namespace FunctionApp1.Utility.cs
 {
     public class EbayProduct
     {
+        private string _url { get; set; }
         public string Url
         {
             set
             {
+                _url = value;
                 ProductId = ExtractProductIdFromUrl(value);
             }
-            get { return Url; }
+            get { return _url; }
         }
         public string Price { get; set; }
         public string ImageUrl { get; set; }
 
         public string Title { get; set; } = "";
 
-        public string ProductId { get; set; }
+        public string ProductId { get; private set; }
         private static string ExtractProductIdFromUrl(string url)
         {
             if (url.Contains("epid"))
