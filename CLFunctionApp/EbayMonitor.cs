@@ -73,6 +73,15 @@ namespace EbayFunctionApp
 
             )
         {
+            try
+            {
+                /** main idea of this function is to perform the following steps:
+                 * 0. Load results of previously scraped ebay search results from database (or blob)
+                 * 1. Scrape listings from first 48 results of an ebay search result URL 
+                 * 2. Compare the previous scrapes listings with the new listings
+                 * If any new listings are seen, a message will be sent to discord
+                 * 3. Add any new scraped listings to the database (so this list will only get bigger.)
+                */
 
             /** main idea of this function is to perform the following steps:
              * 0. Load results of previously scraped ebay search results from database (or blob)
