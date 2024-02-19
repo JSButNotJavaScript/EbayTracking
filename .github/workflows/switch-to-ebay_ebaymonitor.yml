@@ -7,6 +7,7 @@ on:
   push:
     branches:
       - switch-to-ebay
+      - main
   workflow_dispatch:
 
 env:
