@@ -42,7 +42,7 @@ namespace FunctionApp1.Utility.cs
                 return new EbayProduct() { Price = price, Url = listingUrl, ImageUrl = imageUrl, Title = title };
             }).ToList();
 
-            return products.ToDictionary(p => p.Url, p => p);
+            return products.ToDictionary(p => p.Title, p => p);
         }
     }
 }
