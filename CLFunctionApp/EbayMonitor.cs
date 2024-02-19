@@ -214,8 +214,8 @@ namespace EbayFunctionApp
             ComparePreviousAndCurrentListings(IDictionary<string, EbayProduct> currentListings, IDictionary<string, EbayProduct> previousListings)
         {
 
-            var newlyPostedListings = currentListings.Values.Where(l => !previousListings.ContainsKey(l.Url)).ToList();
-            var soldListings = previousListings.Values.Where(l => !currentListings.ContainsKey(l.Url)).ToList();
+            var newlyPostedListings = currentListings.Values.Where(l => !previousListings.ContainsKey(l.ProductId)).ToList();
+            var soldListings = previousListings.Values.Where(l => !currentListings.ContainsKey(l.ProductId)).ToList();
 
             return (newlyPostedListings, soldListings);
         }
