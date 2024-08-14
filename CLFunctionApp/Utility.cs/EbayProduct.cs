@@ -62,6 +62,25 @@ namespace FunctionApp1.Utility.cs
                     return extractedCode;
                 }
             }
+            if (url.Contains("itm"))
+            {
+                string pattern = @"\/itm\/([^\/?]+)";
+
+                // Create a Regex object
+                Regex regex = new Regex(pattern);
+
+                // Match the pattern in the URL
+                Match match = regex.Match(url);
+
+                // Check if the match was successful
+                if (match.Success)
+                {
+                    // Extract the code between "/itm/" and "?itmmeta"
+                    string extractedCode = match.Groups[1].Value;
+
+                    return extractedCode;
+                }
+            }
             return url;
 
         }
